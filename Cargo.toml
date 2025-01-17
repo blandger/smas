@@ -1,0 +1,7 @@
+[package]
+name = "smas"
+authors = ["Yuriy Larin <yuriy.larin@gmail.com>"]
+edition = "2021"
+repository = "https://github.com/blandger/smas"
+
+[dependencies]
