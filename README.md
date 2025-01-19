@@ -1,5 +1,5 @@
-# Simplified Modular Arithmetic Subset (SMAS)
+# Simplified Modular Algorithm Subset (SMAS)
 
 ## Introduction
 
-SMAS is a subset of Modular Arithmetic that is suitable for some applications.
+SMAS is a subset of Modular Arithmetics that are suitable for some applications.

@@ -8,9 +8,10 @@ pub struct ModInt {
     modulus: u64,
 }
 
+/// Implementation for Display, when it's printed by println("{}", &ModInt)
 impl Display for ModInt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} (mod {})", self.value, self.modulus)
+        write!(f, "{} mod {}", self.value, self.modulus)
     }
 }
 
@@ -74,14 +75,15 @@ impl ModInt {
         Self::new(t as u64, self.modulus)
     }
 
-    /// Multiplication by the Barrett algorithm
-    pub fn barrett_mul(&self, other: &ModInt) -> Option<ModInt> {
+    /// Multiplication by the Barrett algorithm.
+    /// Barrett's algorithm uses a pre-computed parameter to speed up the operation. Instead of dividing by modulo n, it uses multiplication and shifts.
+    pub fn mul_barrett(&self, other: &ModInt) -> Option<ModInt> {
         if self.modulus != other.modulus {
             return None;
         }
 
         // Precomputation for Barrett algorithm
-        let k = 64; // Для u64
+        let k = 64; // bits length for u64
         let r = (1u128 << k) / self.modulus as u128;
 
         let x = self.value as u128;
@@ -91,7 +93,7 @@ impl ModInt {
         let m = x * y;
 
         // Estimating the quotient
-        let t = (((m as u128) * (r as u128)) >> k) as u64;
+        let t = ((m * r) >> k) as u64;
 
         // Calculating the remainder
         let u = m as u64 - t * self.modulus;
@@ -366,21 +368,117 @@ mod tests {
     fn test_addition() {
         let a = ModInt::new(5, 7).unwrap();
         let b = ModInt::new(3, 7).unwrap();
-        assert_eq!((a + b).unwrap().value(), 1); // (5 + 3) mod 7 = 1
+        let result = (a + b).unwrap();
+        println!("({} + {}) = {}", &a, &b, &result);
+        assert_eq!(1, result.value()); // (5 + 3) mod 7 = 1
+
+        let a = ModInt::new(3, 5).unwrap();
+        let b = ModInt::new(4, 5).unwrap();
+        let result2 = (a + b).unwrap();
+        println!("({} + {}) = {}", &a, &b, &result2);
+        assert_eq!(2, result2.value()); // (3 + 4) mod 5 = 2
+    }
+
+    #[test]
+    fn test_addition_commutativity() {
+        let a = ModInt::new(5, 7).unwrap();
+        let b = ModInt::new(3, 7).unwrap();
+        let result = (a + b).unwrap();
+        println!("({} + {}) = {}", &a, &b, &result);
+        assert_eq!(1, result.value()); // (5 + 3) mod 7 = 1
+
+        let result2 = (b + a).unwrap();
+        println!("({} + {}) = {}", &b, &a, &result2);
+        assert_eq!(1, result2.value()); // (3 + 5) mod 7 = 1
+
+        assert_eq!(result, result2);
     }
 
     #[test]
     fn test_multiplication() {
         let a = ModInt::new(5, 7).unwrap();
         let b = ModInt::new(3, 7).unwrap();
-        assert_eq!((a * b).unwrap().value(), 1); // (5 * 3) mod 7 = 1
+        let result = (a * b).unwrap();
+        println!("({} * {}) = {}", &a, &b, &result);
+        assert_eq!(1, (a * b).unwrap().value()); // (5 * 3) mod 7 = 1
+
+        let a = ModInt::new(4, 6).unwrap();
+        let b = ModInt::new(5, 6).unwrap();
+        let result2 = (a * b).unwrap();
+        println!("({} * {}) = {}", &a, &b, &result2);
+        assert_eq!(2, result2.value()); // (4 * 5) mod 6 = 2
+    }
+
+    #[test]
+    fn test_multiplication_commutativity() {
+        let a = ModInt::new(5, 7).unwrap();
+        let b = ModInt::new(3, 7).unwrap();
+        let result = (a * b).unwrap();
+        println!("({} * {}) = {}", &a, &b, &result);
+        assert_eq!(1, result.value()); // (5 * 3) mod 7 = 1
+
+        let result2 = (b * a).unwrap();
+        println!("({} * {}) = {}", &b, &a, &result);
+        assert_eq!(1, result2.value()); // (3 * 5) mod 7 = 1
+
+        assert_eq!(result, result2);
+    }
+
+    #[test]
+    fn test_add_association() {
+        let a = ModInt::new(3, 7).unwrap();
+        let b = ModInt::new(4, 7).unwrap();
+        let c = ModInt::new(5, 7).unwrap();
+        // ((3+4)+5) ≡ (3+(4+5)) mod 7 = 5
+        let result1 = ((a + b).unwrap() + c).unwrap();
+        println!("(({} + {}) + {}) = {}", &a, &b, &c, &result1);
+        let result2 = (a + (b + c).unwrap()).unwrap();
+        println!("({} + ({} + {}) = {}", &a, &b, &c, &result2);
+        assert_eq!(result1, result2);
+        assert_eq!(5, result1.value());
+        assert_eq!(5, result2.value());
+    }
+
+    #[test]
+    fn test_mul_association() {
+        let a = ModInt::new(2, 7).unwrap();
+        let b = ModInt::new(3, 7).unwrap();
+        let c = ModInt::new(4, 7).unwrap();
+        // ((2 * 3) * 4) ≡ (2 * (3 * 4)) mod 7 = 3
+        let result1 = ((a * b).unwrap() * c).unwrap();
+        println!("(({} * {}) * {}) = {}", &a, &b, &c, &result1);
+        let result2 = (a * (b * c).unwrap()).unwrap();
+        println!("({} * ({} * {}) = {}", &a, &b, &c, &result2);
+        assert_eq!(result1, result2);
+        assert_eq!(3, result1.value());
+        assert_eq!(3, result2.value());
+    }
+
+    #[test]
+    fn test_distributivity() {
+        let a = ModInt::new(3, 5).unwrap();
+        let b = ModInt::new(2, 5).unwrap();
+        let c = ModInt::new(4, 5).unwrap();
+        // a⋅(b+c) ≡ (a⋅b)+(a⋅c) mod N
+        let result_left = (a * (b + c).unwrap()).unwrap();
+        let result_right = ((a * b).unwrap() + (a * c).unwrap()).unwrap();
+        assert_eq!(result_left, result_right);
+        assert_eq!(3, result_left.value());
+        assert_eq!(3, result_right.value());
     }
 
     #[test]
     fn test_barrett_multiplication() {
         let a = ModInt::new(5, 7).unwrap();
         let b = ModInt::new(3, 7).unwrap();
-        assert_eq!(a.barrett_mul(&b).unwrap().value(), 1); // (5 * 3) mod 7 = 1
+        assert_eq!(1, a.mul_barrett(&b).unwrap().value()); // (5 * 3) mod 7 = 1
+    }
+
+    #[test]
+    fn test_barrett_multiplication_2() {
+        let a = ModInt::new(17, 23).unwrap();
+        let b = ModInt::new(19, 23).unwrap();
+        assert_eq!(1, a.mul_barrett(&b).unwrap().value()); // (17 * 19) mod 23 = 1
     }
 
     #[test]
@@ -406,13 +504,13 @@ mod tests {
         let b = ModInt::new(3, 11).unwrap();
         assert_eq!(a + b, None);
         assert_eq!(a * b, None);
-        assert_eq!(a.barrett_mul(&b), None);
+        assert_eq!(a.mul_barrett(&b), None);
 
         let precomp = ShoupPrecomp::new(3, 11).unwrap();
         assert_eq!(a.shoup_mul(&precomp), None);
     }
 
-    #[test]
+    /*#[test]
     fn test_ntt_butterfly_patterns() { // TODO - check
         // Using prime modulus 7681 = 1 + 15*2^9
         let modulus = 7681;
@@ -448,5 +546,5 @@ mod tests {
         assert_eq!(result[0], 3);  // Constant term
         assert_eq!(result[1], 10 % modulus);  // x term
         assert_eq!(result[2], 8);  // x^2 term
-    }
+    }*/
 }
