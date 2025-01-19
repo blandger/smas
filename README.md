@@ -1,6 +1,6 @@
 # Simplified Modular Algorithm Subset (SMAS)
 
-[![Rust](https://github.com/blandger/smas/actions/workflows/rust.yml/badge.svg)](https://github.com/blandger/smas/actions/workflows/rust.yml)
+[![Rust](https://github.com/blandger/smas/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/blandger/smas/actions/workflows/rust.yml)
 
 ## Introduction
 
