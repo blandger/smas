@@ -468,6 +468,19 @@ mod tests {
     }
 
     #[test]
+    fn test_pow_operation() {
+        let base1 = ModInt::new(3, 7).unwrap();
+        let exp1 = 4;
+        let result1 = base1.pow(exp1).unwrap();
+        assert_eq!(result1.value(), 4); // 3^4 mod 7 = 81 mod 7 = 4
+
+        let base2 = ModInt::new(2, 5).unwrap();
+        let exp2 = 3;
+        let result2 = base2.pow(exp2).unwrap();
+        assert_eq!(result2.value(), 3); // 2^3 mod 5 = 8 mod 5 = 3
+    }
+
+    #[test]
     fn test_barrett_multiplication() {
         let a = ModInt::new(5, 7).unwrap();
         let b = ModInt::new(3, 7).unwrap();
