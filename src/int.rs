@@ -17,14 +17,17 @@ impl Display for ModInt {
 
 impl ModInt {
     /// Creates a new number with the given value and modulus
-    pub fn new(value: u64, modulus: u64) -> Option<Self> {
-        if modulus == 0 {
-            None
-        } else {
-            Some(Self {
-                value: value % modulus,
-                modulus,
-            })
+    /// # Parameters:
+    /// - `value`: The value of the number.
+    /// - `modulus`: The modulus.
+    ///
+    /// # Panic:
+    /// Panics if the modulus is 0.
+    pub fn new(value: u64, modulus: u64) -> Self {
+        assert!(modulus > 0, "Modulus must be greater than 0");
+        Self {
+            value: value % modulus,
+            modulus,
         }
     }
 
@@ -38,23 +41,33 @@ impl ModInt {
         self.modulus
     }
 
+    /// Fast modulus operation that handles negative values.
+    fn _mod_fast(value: i64, modulus: u64) -> u64 {
+        let modulus = modulus as i64;
+        let mut r = value % modulus;
+        if r < 0 {
+            r += modulus;
+        }
+        r as u64
+    }
+
     /// Fast modular exponentiation
-    pub fn pow(&self, mut exp: u64) -> Option<Self> {
+    pub fn pow(&self, mut exp: u64) -> Self {
         let mut base = *self;
-        let mut result = Self::new(1, self.modulus)?;
+        let mut result = Self::new(1, self.modulus);
 
         while exp > 0 {
             if exp & 1 == 1 {
-                result = (result * base)?;
+                result = result * base;
             }
-            base = (base * base)?;
+            base = base * base;
             exp >>= 1;
         }
-        Some(result)
+        result
     }
 
     /// Find multiplicative inverse using Extended Euclidean Algorithm
-    pub fn inv(&self) -> Option<Self> {
+    pub fn inv(&self) -> Self {
         let mut t = 0i64;
         let mut newt = 1i64;
         let mut r = self.modulus as i64;
@@ -67,7 +80,7 @@ impl ModInt {
         }
 
         if r > 1 {
-            return None;
+            assert!(r > 1, "r must be greater than 1");
         }
         if t < 0 {
             t += self.modulus as i64;
@@ -77,9 +90,9 @@ impl ModInt {
 
     /// Multiplication by the Barrett algorithm.
     /// Barrett's algorithm uses a pre-computed parameter to speed up the operation. Instead of dividing by modulo n, it uses multiplication and shifts.
-    pub fn mul_barrett(&self, other: &ModInt) -> Option<ModInt> {
+    pub fn mul_barrett(&self, other: &ModInt) -> ModInt {
         if self.modulus != other.modulus {
-            return None;
+            assert_eq!(self.modulus, other.modulus, "Modulus must be equal");
         }
 
         // Precomputation for Barrett algorithm
@@ -105,13 +118,13 @@ impl ModInt {
             u
         };
 
-        Some(ModInt::new(result, self.modulus).unwrap())
+        ModInt::new(result, self.modulus)
     }
 
     /// Multiplication by a constant using the Shoup algorithm
-    pub fn shoup_mul(&self, pre_comp: &ShoupPrecomp) -> Option<ModInt> {
+    pub fn shoup_mul(&self, pre_comp: &ShoupPrecomp) -> ModInt {
         if self.modulus != pre_comp.modulus {
-            return None;
+            assert_eq!(self.modulus, pre_comp.modulus, "Modulus must be equal");
         }
 
         let q = ((pre_comp.constant_prime as u128 * self.value as u128) >> 64) as u64;
@@ -130,11 +143,11 @@ impl ModInt {
 
 // Implementation of addition
 impl Add for ModInt {
-    type Output = Option<ModInt>;
+    type Output = ModInt;
 
     fn add(self, other: ModInt) -> Self::Output {
         if self.modulus != other.modulus {
-            return None;
+            assert_eq!(self.modulus, other.modulus, "Modulus must be equal");
         }
 
         let sum = self.value + other.value;
@@ -144,16 +157,16 @@ impl Add for ModInt {
             sum
         };
 
-        Some(ModInt::new(result, self.modulus).unwrap())
+        ModInt::new(result, self.modulus)
     }
 }
 
 impl Sub for ModInt {
-    type Output = Option<ModInt>;
+    type Output = ModInt;
 
     fn sub(self, other: ModInt) -> Self::Output {
         if self.modulus != other.modulus {
-            return None;
+            assert_eq!(self.modulus, other.modulus, "Modulus must be equal");
         }
 
         let result = if self.value >= other.value {
@@ -168,15 +181,15 @@ impl Sub for ModInt {
 
 // Implement standard arithmetic operations for ModInt
 impl Mul for ModInt {
-    type Output = Option<ModInt>;
+    type Output = ModInt;
 
     fn mul(self, other: ModInt) -> Self::Output {
         if self.modulus != other.modulus {
-            return None;
+            assert_eq!(self.modulus, other.modulus, "Modulus must be equal");
         }
 
         let result = ((self.value as u128 * other.value as u128) % self.modulus as u128) as u64;
-        Some(ModInt::new(result, self.modulus).unwrap())
+        ModInt::new(result, self.modulus)
     }
 }
 
@@ -190,18 +203,18 @@ pub struct ShoupPrecomp {
 
 impl ShoupPrecomp {
     /// Create new precomputed values for Shoup's algorithm
-    pub fn new(constant: u64, modulus: u64) -> Option<Self> {
+    pub fn new(constant: u64, modulus: u64) -> Self {
         if modulus == 0 {
-            return None;
+            assert!(modulus > 0, "Modulus must be greater than 0");
         }
 
         let constant_prime = ((constant as u128) << 64) / (modulus as u128);
 
-        Some(Self {
+        Self {
             constant,
             constant_prime: constant_prime as u64,
             modulus,
-        })
+        }
     }
 
     /// Multiplies the number by the precomputed constant modulo
@@ -232,17 +245,17 @@ pub struct NTT {
 
 impl NTT {
     /// Create new NTT instance
-    pub fn new(modulus: u64, root: u64, root_pw: u64) -> Option<Self> {
-        let root = ModInt::new(root, modulus)?;
+    pub fn new(modulus: u64, root: u64, root_pw: u64) -> Self {
+        let root = ModInt::new(root, modulus);
         // Fermat's little theorem for inverse
-        let root_inv = root.pow(modulus - 2)?;
+        let root_inv = root.pow(modulus - 2);
 
-        Some(Self {
+        Self {
             modulus,
             root,
             root_inv,
             root_pw,
-        })
+        }
     }
 
     fn is_power_of_two(n: usize) -> bool {
@@ -259,10 +272,10 @@ impl NTT {
     }
 
     /// Forward NTT using Cooley-Tukey butterfly
-    pub fn transform_cooley_tukey(&self, mut values: Vec<u64>) -> Option<Vec<u64>> {
+    pub fn transform_cooley_tukey(&self, mut values: Vec<u64>) -> Vec<u64> {
         let n = values.len();
         if !Self::is_power_of_two(n) || n > (1 << self.root_pw) {
-            return None;
+            return vec![];
         }
 
         // Bit-reverse permutation
@@ -277,82 +290,80 @@ impl NTT {
         // Main NTT loop - Cooley-Tukey butterfly
         let mut size = 1;
         while size < n {
-            let wlen = self.root.pow((self.modulus - 1) / (2 * size as u64))?;
+            let wlen = self.root.pow((self.modulus - 1) / (2 * size as u64));
 
             for i in (0..n).step_by(2 * size) {
-                let mut w = ModInt::new(1, self.modulus)?;
+                let mut w = ModInt::new(1, self.modulus);
 
                 for j in 0..size {
-                    let u = ModInt::new(values[i + j], self.modulus)?;
-                    let v = (w * ModInt::new(values[i + j + size], self.modulus)?)?;
+                    let u = ModInt::new(values[i + j], self.modulus);
+                    let v = w * ModInt::new(values[i + j + size], self.modulus);
 
-                    values[i + j] = (u + v)?.value();
-                    values[i + j + size] = (u - v)?.value();
+                    values[i + j] = (u + v).value();
+                    values[i + j + size] = (u - v).value();
 
-                    w = (w * wlen)?;
+                    w = w * wlen;
                 }
             }
             size *= 2;
         }
 
-        Some(values)
+        values
     }
 
     /// Inverse NTT using Gentleman-Sande butterfly
-    pub fn inverse_transform_gentleman_sande(&self, mut values: Vec<u64>) -> Option<Vec<u64>> {
+    pub fn inverse_transform_gentleman_sande(&self, mut values: Vec<u64>) -> Vec<u64> {
         let n = values.len();
         if !Self::is_power_of_two(n) {
-            return None;
+            return vec![];
         }
 
         let mut size = n / 2;
         while size > 0 {
-            let wlen = self.root_inv.pow((self.modulus - 1) / (2 * size as u64))?;
+            let wlen = self.root_inv.pow((self.modulus - 1) / (2 * size as u64));
 
             for i in (0..n).step_by(2 * size) {
-                let mut w = ModInt::new(1, self.modulus)?;
+                let mut w = ModInt::new(1, self.modulus);
 
                 for j in 0..size {
-                    let u = ModInt::new(values[i + j], self.modulus)?;
-                    let v = ModInt::new(values[i + j + size], self.modulus)?;
+                    let u = ModInt::new(values[i + j], self.modulus);
+                    let v = ModInt::new(values[i + j + size], self.modulus);
 
-                    values[i + j] = (u + v)?.value();
-                    let temp = ((u - v)? * w)?;
+                    values[i + j] = (u + v).value();
+                    let temp = (u - v) * w;
                     values[i + j + size] = temp.value();
 
-                    w = (w * wlen)?;
+                    w = w * wlen;
                 }
             }
             size /= 2;
         }
 
         // Apply scaling factor 1/n
-        let n_mod = ModInt::new(n as u64, self.modulus)?;
-        let n_inv = n_mod.inv()?;
+        let n_mod = ModInt::new(n as u64, self.modulus);
+        let n_inv = n_mod.inv();
 
         for value in values.iter_mut() {
-            *value = (ModInt::new(*value, self.modulus)? * n_inv)?.value();
+            *value = (ModInt::new(*value, self.modulus) * n_inv).value();
         }
 
-        Some(values)
+        values
     }
 
     /// Multiply polynomials using NTT
-    pub fn multiply_polynomials(&self, mut a: Vec<u64>, mut b: Vec<u64>) -> Option<Vec<u64>> {
+    pub fn multiply_polynomials(&self, mut a: Vec<u64>, mut b: Vec<u64>) -> Vec<u64> {
         let n = a.len().max(b.len());
         let n = n.next_power_of_two() * 2;  // Double size to avoid cyclic convolution
         a.resize(n, 0);
         b.resize(n, 0);
 
-        let a_ntt = self.transform_cooley_tukey(a)?;
-        let b_ntt = self.transform_cooley_tukey(b)?;
+        let a_ntt = self.transform_cooley_tukey(a);
+        let b_ntt = self.transform_cooley_tukey(b);
 
         let mut c_ntt = vec![0; n];
         for i in 0..n {
-            let prod = (
-                ModInt::new(a_ntt[i], self.modulus)? *
-                    ModInt::new(b_ntt[i], self.modulus)?
-            )?;
+            let prod = ModInt::new(a_ntt[i], self.modulus) *
+                    ModInt::new(b_ntt[i], self.modulus);
             c_ntt[i] = prod.value();
         }
 
@@ -366,28 +377,28 @@ mod tests {
 
     #[test]
     fn test_addition() {
-        let a = ModInt::new(5, 7).unwrap();
-        let b = ModInt::new(3, 7).unwrap();
-        let result = (a + b).unwrap();
+        let a = ModInt::new(5, 7);
+        let b = ModInt::new(3, 7);
+        let result = a + b;
         println!("({} + {}) = {}", &a, &b, &result);
         assert_eq!(1, result.value()); // (5 + 3) mod 7 = 1
 
-        let a = ModInt::new(3, 5).unwrap();
-        let b = ModInt::new(4, 5).unwrap();
-        let result2 = (a + b).unwrap();
+        let a = ModInt::new(3, 5);
+        let b = ModInt::new(4, 5);
+        let result2 = a + b;
         println!("({} + {}) = {}", &a, &b, &result2);
         assert_eq!(2, result2.value()); // (3 + 4) mod 5 = 2
     }
 
     #[test]
     fn test_addition_commutativity() {
-        let a = ModInt::new(5, 7).unwrap();
-        let b = ModInt::new(3, 7).unwrap();
-        let result = (a + b).unwrap();
+        let a = ModInt::new(5, 7);
+        let b = ModInt::new(3, 7);
+        let result = a + b;
         println!("({} + {}) = {}", &a, &b, &result);
         assert_eq!(1, result.value()); // (5 + 3) mod 7 = 1
 
-        let result2 = (b + a).unwrap();
+        let result2 = b + a;
         println!("({} + {}) = {}", &b, &a, &result2);
         assert_eq!(1, result2.value()); // (3 + 5) mod 7 = 1
 
@@ -396,28 +407,28 @@ mod tests {
 
     #[test]
     fn test_multiplication() {
-        let a = ModInt::new(5, 7).unwrap();
-        let b = ModInt::new(3, 7).unwrap();
-        let result = (a * b).unwrap();
+        let a = ModInt::new(5, 7);
+        let b = ModInt::new(3, 7);
+        let result = a * b;
         println!("({} * {}) = {}", &a, &b, &result);
-        assert_eq!(1, (a * b).unwrap().value()); // (5 * 3) mod 7 = 1
+        assert_eq!(1, (a * b).value()); // (5 * 3) mod 7 = 1
 
-        let a = ModInt::new(4, 6).unwrap();
-        let b = ModInt::new(5, 6).unwrap();
-        let result2 = (a * b).unwrap();
+        let a = ModInt::new(4, 6);
+        let b = ModInt::new(5, 6);
+        let result2 = a * b;
         println!("({} * {}) = {}", &a, &b, &result2);
         assert_eq!(2, result2.value()); // (4 * 5) mod 6 = 2
     }
 
     #[test]
     fn test_multiplication_commutativity() {
-        let a = ModInt::new(5, 7).unwrap();
-        let b = ModInt::new(3, 7).unwrap();
-        let result = (a * b).unwrap();
+        let a = ModInt::new(5, 7);
+        let b = ModInt::new(3, 7);
+        let result = a * b;
         println!("({} * {}) = {}", &a, &b, &result);
         assert_eq!(1, result.value()); // (5 * 3) mod 7 = 1
 
-        let result2 = (b * a).unwrap();
+        let result2 = b * a;
         println!("({} * {}) = {}", &b, &a, &result);
         assert_eq!(1, result2.value()); // (3 * 5) mod 7 = 1
 
@@ -426,13 +437,13 @@ mod tests {
 
     #[test]
     fn test_add_association() {
-        let a = ModInt::new(3, 7).unwrap();
-        let b = ModInt::new(4, 7).unwrap();
-        let c = ModInt::new(5, 7).unwrap();
+        let a = ModInt::new(3, 7);
+        let b = ModInt::new(4, 7);
+        let c = ModInt::new(5, 7);
         // ((3+4)+5) ≡ (3+(4+5)) mod 7 = 5
-        let result1 = ((a + b).unwrap() + c).unwrap();
+        let result1 = (a + b) + c;
         println!("(({} + {}) + {}) = {}", &a, &b, &c, &result1);
-        let result2 = (a + (b + c).unwrap()).unwrap();
+        let result2 = a + (b + c);
         println!("({} + ({} + {}) = {}", &a, &b, &c, &result2);
         assert_eq!(result1, result2);
         assert_eq!(5, result1.value());
@@ -441,13 +452,13 @@ mod tests {
 
     #[test]
     fn test_mul_association() {
-        let a = ModInt::new(2, 7).unwrap();
-        let b = ModInt::new(3, 7).unwrap();
-        let c = ModInt::new(4, 7).unwrap();
+        let a = ModInt::new(2, 7);
+        let b = ModInt::new(3, 7);
+        let c = ModInt::new(4, 7);
         // ((2 * 3) * 4) ≡ (2 * (3 * 4)) mod 7 = 3
-        let result1 = ((a * b).unwrap() * c).unwrap();
+        let result1 = (a * b) * c;
         println!("(({} * {}) * {}) = {}", &a, &b, &c, &result1);
-        let result2 = (a * (b * c).unwrap()).unwrap();
+        let result2 = a * (b * c);
         println!("({} * ({} * {}) = {}", &a, &b, &c, &result2);
         assert_eq!(result1, result2);
         assert_eq!(3, result1.value());
@@ -456,12 +467,12 @@ mod tests {
 
     #[test]
     fn test_distributivity() {
-        let a = ModInt::new(3, 5).unwrap();
-        let b = ModInt::new(2, 5).unwrap();
-        let c = ModInt::new(4, 5).unwrap();
+        let a = ModInt::new(3, 5);
+        let b = ModInt::new(2, 5);
+        let c = ModInt::new(4, 5);
         // a⋅(b+c) ≡ (a⋅b)+(a⋅c) mod N
-        let result_left = (a * (b + c).unwrap()).unwrap();
-        let result_right = ((a * b).unwrap() + (a * c).unwrap()).unwrap();
+        let result_left = a * (b + c);
+        let result_right = (a * b) + (a * c);
         assert_eq!(result_left, result_right);
         assert_eq!(3, result_left.value());
         assert_eq!(3, result_right.value());
@@ -469,58 +480,78 @@ mod tests {
 
     #[test]
     fn test_pow_operation() {
-        let base1 = ModInt::new(3, 7).unwrap();
+        let base1 = ModInt::new(3, 7);
         let exp1 = 4;
-        let result1 = base1.pow(exp1).unwrap();
+        let result1 = base1.pow(exp1);
         assert_eq!(result1.value(), 4); // 3^4 mod 7 = 81 mod 7 = 4
 
-        let base2 = ModInt::new(2, 5).unwrap();
+        let base2 = ModInt::new(2, 5);
         let exp2 = 3;
-        let result2 = base2.pow(exp2).unwrap();
+        let result2 = base2.pow(exp2);
         assert_eq!(result2.value(), 3); // 2^3 mod 5 = 8 mod 5 = 3
     }
 
     #[test]
     fn test_barrett_multiplication() {
-        let a = ModInt::new(5, 7).unwrap();
-        let b = ModInt::new(3, 7).unwrap();
-        assert_eq!(1, a.mul_barrett(&b).unwrap().value()); // (5 * 3) mod 7 = 1
+        let a = ModInt::new(5, 7);
+        let b = ModInt::new(3, 7);
+        assert_eq!(1, a.mul_barrett(&b).value()); // (5 * 3) mod 7 = 1
     }
 
     #[test]
     fn test_barrett_multiplication_2() {
-        let a = ModInt::new(17, 23).unwrap();
-        let b = ModInt::new(19, 23).unwrap();
-        assert_eq!(1, a.mul_barrett(&b).unwrap().value()); // (17 * 19) mod 23 = 1
+        let a = ModInt::new(17, 23);
+        let b = ModInt::new(19, 23);
+        assert_eq!(1, a.mul_barrett(&b).value()); // (17 * 19) mod 23 = 1
     }
 
     #[test]
     fn test_shoup_multiplication() {
         let modulus = 7;
         let constant = 3;
-        let pre_comp = ShoupPrecomp::new(constant, modulus).unwrap();
+        let pre_comp = ShoupPrecomp::new(constant, modulus);
 
-        let a = ModInt::new(5, modulus).unwrap();
-        assert_eq!(a.shoup_mul(&pre_comp).unwrap().value(), 1); // (5 * 3) mod 7 = 1
+        let a = ModInt::new(5, modulus);
+        assert_eq!(a.shoup_mul(&pre_comp).value(), 1); // (5 * 3) mod 7 = 1
 
         // Check several different numbers with the same precomputed constant
-        let b = ModInt::new(4, modulus).unwrap();
-        assert_eq!(b.shoup_mul(&pre_comp).unwrap().value(), 5); // (4 * 3) mod 7 = 5
+        let b = ModInt::new(4, modulus);
+        assert_eq!(b.shoup_mul(&pre_comp).value(), 5); // (4 * 3) mod 7 = 5
 
-        let c = ModInt::new(6, modulus).unwrap();
-        assert_eq!(c.shoup_mul(&pre_comp).unwrap().value(), 4); // (6 * 3) mod 7 = 4
+        let c = ModInt::new(6, modulus);
+        assert_eq!(c.shoup_mul(&pre_comp).value(), 4); // (6 * 3) mod 7 = 4
     }
 
     #[test]
-    fn test_different_moduli() {
-        let a = ModInt::new(5, 7).unwrap();
-        let b = ModInt::new(3, 11).unwrap();
-        assert_eq!(a + b, None);
-        assert_eq!(a * b, None);
-        assert_eq!(a.mul_barrett(&b), None);
+    #[should_panic]
+    fn test_panic_different_modulus_on_add() {
+        let a = ModInt::new(5, 7);
+        let b = ModInt::new(3, 11);
+        let _ = a + b;
+    }
 
-        let precomp = ShoupPrecomp::new(3, 11).unwrap();
-        assert_eq!(a.shoup_mul(&precomp), None);
+    #[test]
+    #[should_panic]
+    fn test_panic_different_modulus_on_mul() {
+        let a = ModInt::new(5, 7);
+        let b = ModInt::new(3, 11);
+        let _ = a * b;
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_panic_different_modulus_on_mul_barrett() {
+        let a = ModInt::new(5, 7);
+        let b = ModInt::new(3, 11);
+        let _ = a.mul_barrett(&b);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_panic_different_modulus_on_mul_shoup() {
+        let a = ModInt::new(5, 7);
+        let precomp = ShoupPrecomp::new(3, 11);
+        let _ = a.shoup_mul(&precomp);
     }
 
     /*#[test]
