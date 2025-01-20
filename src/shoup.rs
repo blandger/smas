@@ -38,3 +38,34 @@ impl ShoupPrecomp {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::int::ModInt;
+    use super::*;
+
+    #[test]
+    fn test_shoup_multiplication() {
+        let modulus = 7;
+        let constant = 3;
+        let pre_comp = ShoupPrecomp::new(constant, modulus);
+
+        let a = ModInt::new(5, modulus);
+        assert_eq!(a.mul_shoup(&pre_comp).value(), 1); // (5 * 3) mod 7 = 1
+
+        // Check several different numbers with the same precomputed constant
+        let b = ModInt::new(4, modulus);
+        assert_eq!(b.mul_shoup(&pre_comp).value(), 5); // (4 * 3) mod 7 = 5
+
+        let c = ModInt::new(6, modulus);
+        assert_eq!(c.mul_shoup(&pre_comp).value(), 4); // (6 * 3) mod 7 = 4
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_panic_different_modulus_on_mul_shoup() {
+        let a = ModInt::new(5, 7);
+        let precomp = ShoupPrecomp::new(3, 11);
+        let _ = a.mul_shoup(&precomp);
+    }
+}
