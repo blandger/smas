@@ -1,4 +1,5 @@
-use smas::int::{ModInt, ShoupPrecomp};
+use smas::int::ModInt;
+use smas::shoup::ShoupPrecomp;
 
 fn main() {
     // Create precomputed values for a constant
