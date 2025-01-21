@@ -19,4 +19,17 @@ fn main() {
     let barrett_product = a.mul_barrett(&b);
     println!("barrett_product = {barrett_product}");
     assert_eq!(1, barrett_product.value());
+
+
+    let c = ModInt::new(7, 13);
+    let d = ModInt::new(11, 13);
+
+    let sum = c + d;
+    println!("Sum: {sum}"); // Output: 5 mod 13
+
+    let diff = c - d;
+    println!("Difference: {diff}"); // Output: 9 mod 13
+
+    let inv = a.inv();
+    println!("Inverse of {a}: {inv}"); // Output: 2 mod 13
 }

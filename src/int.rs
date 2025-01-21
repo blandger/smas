@@ -113,7 +113,7 @@ impl ModInt {
     }
 
     /// Fast modular reduction (constant-time).
-    fn mod_fast(value: i64, modulus: u64) -> u64 {
+    fn _mod_fast(value: i64, modulus: u64) -> u64 {
         let modulus = modulus as i64;
         let mut r = value % modulus;
 
